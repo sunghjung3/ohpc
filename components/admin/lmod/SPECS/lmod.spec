@@ -84,7 +84,7 @@ make DESTDIR=$RPM_BUILD_ROOT install
 ########################################################################
 
 # NOOP if running under known resource manager
-if [ ! -z "\$SLURM_NODELIST" ] | [ ! -z "\$PBS_NODEFILE" ]; then
+if [ ! -z "\$SLURM_NODELIST" ] || [ ! -z "\$PBS_NODEFILE" ]; then
      return
 fi
 
