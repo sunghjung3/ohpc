@@ -6,6 +6,7 @@ github_url = "git@github.com:openhpc/ohpc.git"
 service_template=service.file
 link_compiler_template=link_compiler
 link_mpi_template=link_mpi
+link_mpi_to_non_mpi_template=link_mpi_to_non_mpi
 
 override_templates=templates
 dry_run=True  # do not make changes to OBS, just do a dry-run
@@ -43,13 +44,29 @@ skip_aarch=["-intel\\b","lustre-client","-impi\\b","-mvapich2\\b","likwid-gnu","
 skip_x86  = ["-arm1"]
 
 # define compiler/MPI families: first entry in list is defined to be parent in OBS
-#compiler_families=["gnu13","intel","arm1"]
+#compiler_families=["gnu14","intel","arm1"]
 compiler_families=["gnu14", "intel"]
 mpi_families=["openmpi5","mpich","mvapich2","impi"]
+compiler_dependent = ["openmpi", "mpich", "mvapich2", "openblas", "R", "likwid",
+                      "pdtoolkit", "gsl", "metis", "superlu", "scotch",
+                      "numpy", "plasma", "hdf5"]
 
-standalone = ["docs","test-suite","warewulf"]
-mpi_dependent = ["cubew","otf2","cubelib","opari2","scorep","scalasca"]
+standalone = ["docs", "test-suite", "warewulf", "gnu-compilers", "ohpc-filesystem",
+	      "impi-devel", "meta-packages", "easybuild", "spack", "hwloc", "ucx",
+	      "lmod", "genders", "hpc-workspace", "valgrind", "slurm"]
+mpi_dependent = ["cubew", "otf2", "cubelib", "opari2", "sionlib", "fftw", "scalapack",
+		 "scorep", "scalasca", "scipy", "phdf5", "netcdf", "netcdf-fortran",
+		 "netcdf-cxx", "lmod-defaults", "geopm", "mumps", "omb",
+		 "ptscotch", "boost", "pnetcdf", "tau", "extrae", "imb",
+		 "opencoarrays", "hypre", "mpi4py", "dimemas", "adios2",
+		 "trilinos", "petsc", "slepc", "superlu_dist", "mfem"]
 skip_on_distro_openEuler_22.03 = ["-arm1","-intel","-impi","impi-devel","intel-compilers-devel","arm-compilers-devel"]
+openblas_compiler=["gnu14"]
+R_compiler=["gnu14"]
+opencoarrays_compiler=["gnu14"]
+scipy_compiler=["gnu14"]
+mpi_dependent_to_non_mpi=["netcdf","netcdf-fortran","netcdf-cxx"]
+with_ucx=["mpich"]
 
 [3.1.0]
 
@@ -162,7 +179,11 @@ skip_x86  = ["-arm1"]
 compiler_families=["gnu12","intel","arm1"]
 mpi_families=["openmpi4","mpich","mvapich2","impi"]
 
-standalone = ["intel-compilers-devel"]
+standalone = ["intel-compilers-devel", "easybuild", "gnu-compilers", "slurm", "spack", "lmod",
+	      "test-suite", "docs"]
+mpi_dependent = ["opencoarrays"]
+
+opencoarrays_compiler=["gnu12"]
 
 [2.8.0]
 

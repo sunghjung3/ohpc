@@ -16,7 +16,7 @@ permissions and limitations under the License.
 
 <link project='!PROJECT!' package='!PACKAGE!'>
 <patches>
-  <topadd>%define compiler_family !COMPILER!</topadd>
+	<topadd>%define compiler_family !COMPILER!</topadd>
+	!REPLACE_ME!
 </patches>
 </link>
-

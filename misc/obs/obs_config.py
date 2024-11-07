@@ -148,6 +148,10 @@ class ohpc_obs_tool(object):
                     'global',
                     'link_mpi_template',
                 )
+                self.linkFile_mpi_to_non_mpi = self.buildConfig.get(
+                    'global',
+                    'link_mpi_to_non_mpi_template',
+                )
                 self.overrides = self.buildConfig.get(
                     'global',
                     'override_templates',
@@ -190,14 +194,22 @@ class ohpc_obs_tool(object):
             self.parentCompiler = self.compilerFamilies[0]
             self.parentMPI = self.MPIFamilies[0]
 
-            logging.info("--> (global) dry run              = %s" %
-                         self.dryRun)
-            logging.info("--> (global) service template     = %s" %
-                         self.serviceFile)
-            logging.info("--> (global) link template (comp) = %s" %
-                         self.linkFile_compiler)
-            logging.info("--> (global) link template (mpi)  = %s" %
-                         self.linkFile_mpi)
+            logging.info(
+                "--> (global) dry run" + " " * 39 + "= %s" %
+                self.dryRun)
+            logging.info(
+                "--> (global) service template" + " " * 30 + "= %s" %
+                self.serviceFile)
+            logging.info(
+                "--> (global) link template (comp)" + " " * 26 + "= %s" %
+                self.linkFile_compiler)
+            logging.info(
+                "--> (global) link template (mpi)" + " " * 27 + "= %s" %
+                self.linkFile_mpi)
+            logging.info(
+                "--> (global) link template " +
+                "(link_mpi_to_non_mpi_template)  = %s" %
+                self.linkFile_mpi)
             logging.info("\nCompiler families (%s):" % self.vip)
 
             for family in self.compilerFamilies:
@@ -275,7 +287,9 @@ class ohpc_obs_tool(object):
             components['standalone'] = ast.literal_eval(
                 self.buildConfig.get(self.vip, "standalone"))
             logging.info("Parsed components:")
-            logging.info("--> [standalone]: %s" % components['standalone'])
+            logging.info(
+                "--> [        standalone]: %s" %
+                components['standalone'])
 
             components['standalone'] = self.checkForDisabledComponents(
                 components['standalone'])
@@ -283,7 +297,9 @@ class ohpc_obs_tool(object):
         if self.buildConfig.has_option(self.vip, 'compiler_dependent'):
             components['comp_dep'] = ast.literal_eval(
                 self.buildConfig.get(self.vip, "compiler_dependent"))
-            logging.info("--> [  comp_dep]: %s" % components['comp_dep'])
+            logging.info(
+                "--> [          comp_dep]: %s" %
+                components['comp_dep'])
 
             components['comp_dep'] = self.checkForDisabledComponents(
                 components['comp_dep'])
@@ -291,10 +307,32 @@ class ohpc_obs_tool(object):
         if self.buildConfig.has_option(self.vip, 'mpi_dependent'):
             components['mpi_dep'] = ast.literal_eval(
                 self.buildConfig.get(self.vip, "mpi_dependent"))
-            logging.info("--> [   mpi_dep]: %s" % components['mpi_dep'])
+            logging.info(
+                "--> [           mpi_dep]: %s" %
+                components['mpi_dep'])
 
             components['mpi_dep'] = self.checkForDisabledComponents(
                 components['mpi_dep'])
+
+        if self.buildConfig.has_option(self.vip, 'mpi_dependent_to_non_mpi'):
+            components['mpi_dep_to_non_mpi'] = ast.literal_eval(
+                self.buildConfig.get(self.vip, "mpi_dependent_to_non_mpi"))
+            logging.info(
+                "--> [mpi_dep_to_non_mpi]: %s" %
+                components['mpi_dep_to_non_mpi'])
+
+            components['mpi_dep_to_non_mpi'] = self.checkForDisabledComponents(
+                components['mpi_dep_to_non_mpi'])
+
+        if self.buildConfig.has_option(self.vip, 'with_ucx'):
+            components['with_ucx'] = ast.literal_eval(
+                self.buildConfig.get(self.vip, "with_ucx"))
+            logging.info(
+                "--> [          with_ucx]: %s" %
+                components['with_ucx'])
+
+            components['with_ucx'] = self.checkForDisabledComponents(
+                components['with_ucx'])
 
         numComponents = 0
         if 'standalone' not in components:
@@ -303,11 +341,17 @@ class ohpc_obs_tool(object):
             components['comp_dep'] = []
         if 'mpi_dep' not in components:
             components['mpi_dep'] = []
+        if 'mpi_dep_to_non_mpi' not in components:
+            components['mpi_dep_to_non_mpi'] = []
+        if 'with_ucx' not in components:
+            components['with_ucx'] = []
 
         numComponents = (
             len(components['standalone']) +
             len(components['comp_dep']) +
-            len(components['mpi_dep'])
+            len(components['mpi_dep']) +
+            len(components['mpi_dep_to_non_mpi']) +
+            len(components['with_ucx'])
         )
 
         logging.info("# of requested components = %i\n" % numComponents)
@@ -499,6 +543,8 @@ class ohpc_obs_tool(object):
         mpi=None,
         parentName=None,
         gitName=None,
+        isMPIDepToNonMPI=False,
+        replace=None,
     ):
         fname = inspect.stack()[0][3]
         pad = 15
@@ -710,6 +756,8 @@ class ohpc_obs_tool(object):
                 assert compiler is not None
             elif isMPIDep:
                 linkFile = self.linkFile_mpi
+            elif isMPIDepToNonMPI:
+                linkFile = self.linkFile_mpi_to_non_mpi
 
             assert parentName is not None
 
@@ -729,6 +777,11 @@ class ohpc_obs_tool(object):
             if isMPIDep:
                 contents = contents.replace('!MPI!', mpi)
 
+            if replace:
+                contents = contents.replace('!REPLACE_ME!', replace)
+            else:
+
+                contents = contents.replace('\t!REPLACE_ME!\n', '')
             fp_link = tempfile.NamedTemporaryFile(delete=True, mode='w')
             fp_link.write(contents)
             fp_link.flush()
@@ -884,10 +937,10 @@ def main():
     for package in components['standalone']:
         ptype = "standalone"
         if package in obsPackages:
-            logging.info("%27s (%13s): present in OBS" % (package, ptype))
+            logging.info("%34s (%13s): present in OBS" % (package, ptype))
         else:
             logging.info(
-                "%27s (%13s): *not* present in OBS, need to add" %
+                "%34s (%13s): *not* present in OBS, need to add" %
                 (package, ptype))
             obs.addPackage(package, parent=True)
 
@@ -898,10 +951,6 @@ def main():
         if args.package and (package != args.package):
             logging.info("skipping %s" % package)
             continue
-        else:
-            logging.info(
-                "desired override package %s is compiler dependent" %
-                package)
 
         ptype = "compiler dep"
         parent = package + '-' + obs.getParentCompiler()
@@ -910,7 +959,7 @@ def main():
         Defcompilers = obs.queryCompilers(package, noOverride=True)
 
         if compilers != Defcompilers:
-            pad = 15
+            pad = 22
             logging.warning(
                 " " *
                 pad +
@@ -920,10 +969,10 @@ def main():
 
         # check on parent first (it must exist before any children are linked)
         if parent in obsPackages:
-            logging.info("%27s (%13s): present in OBS" % (parent, ptype))
+            logging.info("%34s (%13s): present in OBS" % (parent, ptype))
         else:
             logging.info(
-                "%27s (%13s): *not* present in OBS, need to add" %
+                "%34s (%13s): *not* present in OBS, need to add" %
                 (parent, ptype))
             obs.addPackage(
                 parent,
@@ -952,10 +1001,10 @@ def main():
                 "checking on child compiler dependent package: %s" %
                 child)
             if child in obsPackages:
-                logging.info("%27s (%13s): present in OBS" % (child, ptype))
+                logging.info("%34s (%13s): present in OBS" % (child, ptype))
             else:
                 logging.info(
-                    "%27s (%13s): *not* present in OBS, need to add" %
+                    "%34s (%13s): *not* present in OBS, need to add" %
                     (child, ptype))
                 obs.addPackage(
                     child,
@@ -963,6 +1012,25 @@ def main():
                     isCompilerDep=True,
                     compiler=compiler,
                     parentName=parent)
+
+        for compiler in compilers:
+            if package in components['with_ucx']:
+                child = package + '-ucx-' + compiler
+                if child in obsPackages:
+                    logging.info(
+                        "%34s (%13s): present in OBS" %
+                        (child, ptype))
+                else:
+                    logging.info(
+                        "%34s (%13s): *not* present in OBS, need to add" %
+                        (child, ptype))
+                    obs.addPackage(
+                        child,
+                        parent=False,
+                        isCompilerDep=True,
+                        compiler=compiler,
+                        parentName=parent,
+                        replace='<topadd>%define with_ucx 1</topadd>')
 
     # (3) MPI dependent packages
     for package in components['mpi_dep']:
@@ -979,10 +1047,10 @@ def main():
 
         # check on parent first (it must exist before any children are linked)
         if parent in obsPackages:
-            logging.info("%27s (%13s): present in OBS" % (parent, ptype))
+            logging.info("%34s (%13s): present in OBS" % (parent, ptype))
         else:
             logging.info(
-                "%27s (%13s): *not* present in OBS, need to add" %
+                "%34s (%13s): *not* present in OBS, need to add" %
                 (parent, ptype))
             obs.addPackage(parent, parent=True, isMPIDep=True, gitName=package)
 
@@ -1000,11 +1068,11 @@ def main():
 
                 if child in obsPackages:
                     logging.info(
-                        "%27s (%13s): present in OBS" %
+                        "%34s (%13s): present in OBS" %
                         (child, ptype))
                 else:
                     logging.info(
-                        "%27s (%13s): *not* present in OBS, need to add" %
+                        "%34s (%13s): *not* present in OBS, need to add" %
                         (child, ptype))
                     obs.addPackage(
                         child,
@@ -1013,6 +1081,27 @@ def main():
                         compiler=compiler,
                         mpi=mpi,
                         parentName=parent)
+
+        if package in components['mpi_dep_to_non_mpi']:
+            ptype = "non MPI dep"
+            for compiler in compilers:
+                child = package + '-' + compiler
+                if child in obsPackages:
+                    logging.info(
+                        "%34s (%13s): present in OBS" %
+                        (child, ptype))
+                else:
+                    logging.info(
+                        "%34s (%13s): *not* present in OBS, need to add" %
+                        (child, ptype))
+                    obs.addPackage(
+                        child,
+                        parent=False,
+                        isMPIDep=False,
+                        compiler=compiler,
+                        mpi=mpi,
+                        parentName=parent,
+                        isMPIDepToNonMPI=True)
 
     obs.cancelNewBuilds()
 
