@@ -36,6 +36,18 @@ perf-tools    = ["dimemas","extrae","geopm","imb","likwid","msr-safe","omb","pap
 compiler-families=["gnu-compilers","intel-compilers-devel","arm-compilers-devel","llvm-compilers"]
 mpi-families=["impi-devel","mpich","mvapich2","openmpi","libfabric","ucx"]
 
+[3.2.1]
+skip_aarch=["-intel\\b","lustre-client","-impi\\b","-mvapich2\\b","likwid-gnu","likwid-arm1","geopm",
+            "intel-compilers-devel","impi-devel","mvapich2","openblas-arm1"]
+skip_x86  = ["-arm1"]
+
+# define compiler/MPI families: first entry in list is defined to be parent in OBS
+# this branch is just a rebuild of openmpi 5.0.5 with gnu13
+compiler_families=["gnu13", "intel"]
+mpi_families=["openmpi5","mpich","mvapich2","impi"]
+compiler_dependent = ["openmpi"]
+
+skip_on_distro_openEuler_22.03 = ["-arm1","-intel","-impi","impi-devel","intel-compilers-devel","arm-compilers-devel"]
 [3.2.0]
 
 # define patterns for a given arch in which to disable builds
